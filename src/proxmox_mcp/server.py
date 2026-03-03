@@ -39,8 +39,14 @@ from .tools.definitions import (
     GET_VMS_DESC,
     EXECUTE_VM_COMMAND_DESC,
     GET_CONTAINERS_DESC,
+    GET_CONTAINER_STATUS_DESC,
+    START_CONTAINER_DESC,
+    STOP_CONTAINER_DESC,
+    SHUTDOWN_CONTAINER_DESC,
+    REBOOT_CONTAINER_DESC,
+    EXECUTE_CONTAINER_COMMAND_DESC,
     GET_STORAGE_DESC,
-    GET_CLUSTER_STATUS_DESC
+    GET_CLUSTER_STATUS_DESC,
 )
 
 class ProxmoxMCPServer:
@@ -111,6 +117,49 @@ class ProxmoxMCPServer:
         @self.mcp.tool(description=GET_CONTAINERS_DESC)
         def get_containers():
             return self.lxc_tools.get_containers()
+
+        @self.mcp.tool(description=GET_CONTAINER_STATUS_DESC)
+        def get_container_status(
+            node: Annotated[str, Field(description="Host node name (e.g. 'pve1')")],
+            vmid: Annotated[str, Field(description="Container ID number (e.g. '200')")],
+        ):
+            return self.lxc_tools.get_container_status(node, vmid)
+
+        @self.mcp.tool(description=START_CONTAINER_DESC)
+        def start_container(
+            node: Annotated[str, Field(description="Host node name (e.g. 'pve1')")],
+            vmid: Annotated[str, Field(description="Container ID number (e.g. '200')")],
+        ):
+            return self.lxc_tools.start_container(node, vmid)
+
+        @self.mcp.tool(description=STOP_CONTAINER_DESC)
+        def stop_container(
+            node: Annotated[str, Field(description="Host node name (e.g. 'pve1')")],
+            vmid: Annotated[str, Field(description="Container ID number (e.g. '200')")],
+        ):
+            return self.lxc_tools.stop_container(node, vmid)
+
+        @self.mcp.tool(description=SHUTDOWN_CONTAINER_DESC)
+        def shutdown_container(
+            node: Annotated[str, Field(description="Host node name (e.g. 'pve1')")],
+            vmid: Annotated[str, Field(description="Container ID number (e.g. '200')")],
+        ):
+            return self.lxc_tools.shutdown_container(node, vmid)
+
+        @self.mcp.tool(description=REBOOT_CONTAINER_DESC)
+        def reboot_container(
+            node: Annotated[str, Field(description="Host node name (e.g. 'pve1')")],
+            vmid: Annotated[str, Field(description="Container ID number (e.g. '200')")],
+        ):
+            return self.lxc_tools.reboot_container(node, vmid)
+
+        @self.mcp.tool(description=EXECUTE_CONTAINER_COMMAND_DESC)
+        async def execute_container_command(
+            node: Annotated[str, Field(description="Host node name (e.g. 'pve1')")],
+            vmid: Annotated[str, Field(description="Container ID number (e.g. '200')")],
+            command: Annotated[str, Field(description="Shell command to run (e.g. 'uname -a')")],
+        ):
+            return await self.lxc_tools.execute_container_command(node, vmid, command)
 
         # Storage tools
         @self.mcp.tool(description=GET_STORAGE_DESC)

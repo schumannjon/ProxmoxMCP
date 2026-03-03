@@ -66,6 +66,12 @@ class ProxmoxTool:
             formatted = ProxmoxTemplates.vm_list(data)
         elif resource_type == "storage":
             formatted = ProxmoxTemplates.storage_list(data)
+        elif resource_type == "container_status":
+            # data is a tuple of (vmid, status_dict)
+            if isinstance(data, tuple) and len(data) == 2:
+                formatted = ProxmoxTemplates.container_status(data[0], data[1])
+            else:
+                formatted = ProxmoxTemplates.container_status("unknown", data)
         elif resource_type == "containers":
             formatted = ProxmoxTemplates.container_list(data)
         elif resource_type == "cluster":

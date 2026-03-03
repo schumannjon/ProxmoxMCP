@@ -66,6 +66,12 @@ async def test_list_tools(server):
     assert "get_vms" in tool_names
     assert "execute_vm_command" in tool_names
     assert "get_containers" in tool_names
+    assert "get_container_status" in tool_names
+    assert "start_container" in tool_names
+    assert "stop_container" in tool_names
+    assert "shutdown_container" in tool_names
+    assert "reboot_container" in tool_names
+    assert "execute_container_command" in tool_names
 
 @pytest.mark.asyncio
 async def test_get_nodes(server, mock_proxmox):
@@ -225,6 +231,116 @@ async def test_get_containers_empty(server, mock_proxmox):
 
     assert len(response) == 1
     assert "No containers" in response[0].text
+
+@pytest.mark.asyncio
+async def test_get_container_status(server, mock_proxmox):
+    """Test get_container_status returns formatted status for a specific container."""
+    mock_proxmox.return_value.nodes.return_value.lxc.return_value.status.current.get.return_value = {
+        "status": "running",
+        "name": "ct1",
+        "uptime": 3600,
+        "cpus": 2,
+        "cpu": 0.05,
+        "mem": 134217728,
+        "maxmem": 536870912,
+        "disk": 1073741824,
+        "maxdisk": 10737418240,
+    }
+
+    response = await server.mcp.call_tool("get_container_status", {"node": "node1", "vmid": "200"})
+
+    assert len(response) == 1
+    text = response[0].text
+    assert "ct1" in text
+    assert "RUNNING" in text
+
+@pytest.mark.asyncio
+async def test_get_container_status_missing_parameters(server):
+    """Test get_container_status with missing parameters."""
+    with pytest.raises(ToolError, match="Field required"):
+        await server.mcp.call_tool("get_container_status", {})
+
+@pytest.mark.asyncio
+async def test_start_container(server, mock_proxmox):
+    """Test start_container returns a task ID."""
+    mock_proxmox.return_value.nodes.return_value.lxc.return_value.status.start.post.return_value = (
+        "UPID:node1:00001234:00000001:5E3F4A2B:vzstart:200:root@pam:"
+    )
+
+    response = await server.mcp.call_tool("start_container", {"node": "node1", "vmid": "200"})
+
+    assert len(response) == 1
+    assert "start" in response[0].text
+    assert "200" in response[0].text
+
+@pytest.mark.asyncio
+async def test_stop_container(server, mock_proxmox):
+    """Test stop_container returns a task ID."""
+    mock_proxmox.return_value.nodes.return_value.lxc.return_value.status.stop.post.return_value = (
+        "UPID:node1:00001234:00000001:5E3F4A2B:vzstop:200:root@pam:"
+    )
+
+    response = await server.mcp.call_tool("stop_container", {"node": "node1", "vmid": "200"})
+
+    assert len(response) == 1
+    assert "stop" in response[0].text
+
+@pytest.mark.asyncio
+async def test_shutdown_container(server, mock_proxmox):
+    """Test shutdown_container returns a task ID."""
+    mock_proxmox.return_value.nodes.return_value.lxc.return_value.status.shutdown.post.return_value = (
+        "UPID:node1:00001234:00000001:5E3F4A2B:vzshutdown:200:root@pam:"
+    )
+
+    response = await server.mcp.call_tool("shutdown_container", {"node": "node1", "vmid": "200"})
+
+    assert len(response) == 1
+    assert "shutdown" in response[0].text
+
+@pytest.mark.asyncio
+async def test_reboot_container(server, mock_proxmox):
+    """Test reboot_container returns a task ID."""
+    mock_proxmox.return_value.nodes.return_value.lxc.return_value.status.reboot.post.return_value = (
+        "UPID:node1:00001234:00000001:5E3F4A2B:vzreboot:200:root@pam:"
+    )
+
+    response = await server.mcp.call_tool("reboot_container", {"node": "node1", "vmid": "200"})
+
+    assert len(response) == 1
+    assert "reboot" in response[0].text
+
+@pytest.mark.asyncio
+async def test_execute_container_command_success(server, mock_proxmox):
+    """Test successful container command execution."""
+    mock_proxmox.return_value.nodes.return_value.lxc.return_value.status.current.get.return_value = {
+        "status": "running"
+    }
+    mock_proxmox.return_value.nodes.return_value.lxc.return_value.exec.post.return_value = (
+        "some output"
+    )
+
+    response = await server.mcp.call_tool("execute_container_command", {
+        "node": "node1",
+        "vmid": "200",
+        "command": "uname -a",
+    })
+
+    assert len(response) == 1
+    assert response[0].text
+
+@pytest.mark.asyncio
+async def test_execute_container_command_not_running(server, mock_proxmox):
+    """Test container command execution when container is stopped."""
+    mock_proxmox.return_value.nodes.return_value.lxc.return_value.status.current.get.return_value = {
+        "status": "stopped"
+    }
+
+    with pytest.raises(ToolError, match="not running"):
+        await server.mcp.call_tool("execute_container_command", {
+            "node": "node1",
+            "vmid": "200",
+            "command": "uname -a",
+        })
 
 @pytest.mark.asyncio
 async def test_execute_vm_command_missing_parameters(server):

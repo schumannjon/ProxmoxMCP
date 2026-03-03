@@ -153,6 +153,41 @@ class ProxmoxTemplates:
         return "\n".join(result)
     
     @staticmethod
+    def container_status(vmid: str, status: Dict[str, Any]) -> str:
+        """Template for detailed container status output.
+
+        Args:
+            vmid: Container ID
+            status: Container status data
+
+        Returns:
+            Formatted container status string
+        """
+        memory_used = status.get("mem", 0)
+        memory_total = status.get("maxmem", 0)
+        memory_percent = (memory_used / memory_total * 100) if memory_total > 0 else 0
+
+        disk_used = status.get("disk", 0)
+        disk_total = status.get("maxdisk", 0)
+        disk_percent = (disk_used / disk_total * 100) if disk_total > 0 else 0
+
+        cpu_percent = status.get("cpu", 0) * 100
+
+        result = [
+            f"{ProxmoxTheme.RESOURCES['container']} Container: {status.get('name', vmid)} (ID: {vmid})",
+            f"  • Status: {status.get('status', 'unknown').upper()}",
+            f"  • Uptime: {ProxmoxFormatters.format_uptime(status.get('uptime', 0))}",
+            f"  • CPU Cores: {status.get('cpus', 'N/A')}",
+            f"  • CPU Usage: {cpu_percent:.1f}%",
+            f"  • Memory: {ProxmoxFormatters.format_bytes(memory_used)} / "
+            f"{ProxmoxFormatters.format_bytes(memory_total)} ({memory_percent:.1f}%)",
+            f"  • Disk: {ProxmoxFormatters.format_bytes(disk_used)} / "
+            f"{ProxmoxFormatters.format_bytes(disk_total)} ({disk_percent:.1f}%)",
+        ]
+
+        return "\n".join(result)
+
+    @staticmethod
     def container_list(containers: List[Dict[str, Any]]) -> str:
         """Template for container list output.
         
