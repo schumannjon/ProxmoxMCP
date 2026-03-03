@@ -17,7 +17,9 @@ A Python-based Model Context Protocol (MCP) server for interacting with Proxmox 
 - 🛠️ Built with the official MCP SDK
 - 🔒 Secure token-based authentication with Proxmox
 - 🖥️ Tools for managing nodes and VMs
-- 💻 VM console command execution
+- 📦 Full LXC container management (list, status, lifecycle, command execution)
+- 💻 VM and container console command execution
+- 🐳 Docker support for containerized deployment
 - 📝 Configurable logging system
 - ✅ Type-safe implementation with Pydantic
 - 🎨 Rich output formatting with customizable themes
@@ -340,6 +342,98 @@ Execute a command in a VM's console using QEMU Guest Agent.
   - Returns error if command execution fails
   - Includes command output even if command returns non-zero exit code
 
+### get_containers
+List all LXC containers across the cluster.
+
+- Parameters: None
+- Example Response:
+  ```
+  📦 Containers
+
+  📦 nginx-proxy (ID: 200)
+    • Status: RUNNING
+    • Node: proxmox
+    • CPU Cores: 2
+    • Memory: 512.0 MB / 1.0 GB (50.0%)
+
+  📦 postgres-db (ID: 201)
+    • Status: RUNNING
+    • Node: proxmox
+    • CPU Cores: 4
+    • Memory: 1.8 GB / 4.0 GB (45.0%)
+  ```
+
+### get_container_status
+Get detailed status of a specific LXC container.
+
+- Parameters:
+  - `node` (string, required): Name of the node hosting the container
+  - `vmid` (string, required): ID of the container
+- Example Response:
+  ```
+  📦 Container: nginx-proxy (ID: 200)
+    • Status: RUNNING
+    • Uptime: ⏳ 10d 4h 22m
+    • CPU Cores: 2
+    • CPU Usage: 1.4%
+    • Memory: 512.0 MB / 1.0 GB (50.0%)
+    • Disk: 2.1 GB / 20.0 GB (10.5%)
+  ```
+
+### start_container
+Start a stopped LXC container.
+
+- Parameters:
+  - `node` (string, required): Name of the node hosting the container
+  - `vmid` (string, required): ID of the container
+- Example Response:
+  ```
+  Container 200 start initiated
+  Task ID: UPID:proxmox:00001234:...
+  ```
+
+### stop_container
+Immediately stop a running LXC container (hard stop, no graceful shutdown).
+
+- Parameters:
+  - `node` (string, required): Name of the node hosting the container
+  - `vmid` (string, required): ID of the container
+
+### shutdown_container
+Gracefully shut down a running LXC container.
+
+- Parameters:
+  - `node` (string, required): Name of the node hosting the container
+  - `vmid` (string, required): ID of the container
+
+### reboot_container
+Reboot a running LXC container.
+
+- Parameters:
+  - `node` (string, required): Name of the node hosting the container
+  - `vmid` (string, required): ID of the container
+
+### execute_container_command
+Execute a command inside a running LXC container.
+
+- Parameters:
+  - `node` (string, required): Name of the node hosting the container
+  - `vmid` (string, required): ID of the container
+  - `command` (string, required): Command to execute
+- Example Response:
+  ```
+  🔧 Console Command Result
+    • Status: SUCCESS
+    • Command: uname -a
+
+  Output:
+  Linux nginx-proxy 6.1.0-28-amd64 #1 SMP Debian 6.1.0 x86_64 GNU/Linux
+  ```
+- Requirements:
+  - Container must be running
+- Note:
+  - Unlike VM command execution (which uses QEMU guest agent), LXC containers are executed directly via the Proxmox API without requiring any agent installation
+
 ## 👨‍💻 Development
 
 After activating your virtual environment:
@@ -360,7 +454,8 @@ proxmox-mcp/
 │       ├── core/              # Core functionality
 │       ├── formatting/        # Output formatting and themes
 │       ├── tools/             # Tool implementations
-│       │   └── console/       # VM console operations
+│       │   ├── console/       # VM console operations
+│       │   └── lxc.py         # LXC container tools
 │       └── utils/             # Utilities (auth, logging)
 ├── tests/                     # Test suite
 ├── proxmox-config/
