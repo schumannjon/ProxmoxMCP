@@ -32,14 +32,21 @@ from .tools.node import NodeTools
 from .tools.vm import VMTools
 from .tools.storage import StorageTools
 from .tools.cluster import ClusterTools
+from .tools.lxc import LXCTools
 from .tools.definitions import (
     GET_NODES_DESC,
     GET_NODE_STATUS_DESC,
     GET_VMS_DESC,
     EXECUTE_VM_COMMAND_DESC,
     GET_CONTAINERS_DESC,
+    GET_CONTAINER_CONFIG_DESC,
+    GET_CONTAINER_STATUS_DESC,
+    START_CONTAINER_DESC,
+    STOP_CONTAINER_DESC,
+    SHUTDOWN_CONTAINER_DESC,
+    REBOOT_CONTAINER_DESC,
     GET_STORAGE_DESC,
-    GET_CLUSTER_STATUS_DESC
+    GET_CLUSTER_STATUS_DESC,
 )
 
 class ProxmoxMCPServer:
@@ -63,6 +70,7 @@ class ProxmoxMCPServer:
         self.vm_tools = VMTools(self.proxmox)
         self.storage_tools = StorageTools(self.proxmox)
         self.cluster_tools = ClusterTools(self.proxmox)
+        self.lxc_tools = LXCTools(self.proxmox)
         
         # Initialize MCP server
         self.mcp = FastMCP("ProxmoxMCP")
@@ -104,6 +112,53 @@ class ProxmoxMCPServer:
             command: Annotated[str, Field(description="Shell command to run (e.g. 'uname -a', 'systemctl status nginx')")]
         ):
             return await self.vm_tools.execute_command(node, vmid, command)
+
+        # LXC tools
+        @self.mcp.tool(description=GET_CONTAINERS_DESC)
+        def get_containers():
+            return self.lxc_tools.get_containers()
+
+        @self.mcp.tool(description=GET_CONTAINER_CONFIG_DESC)
+        def get_container_config(
+            node: Annotated[str, Field(description="Host node name (e.g. 'pve1')")],
+            vmid: Annotated[str, Field(description="Container ID number (e.g. '200')")],
+        ):
+            return self.lxc_tools.get_container_config(node, vmid)
+
+        @self.mcp.tool(description=GET_CONTAINER_STATUS_DESC)
+        def get_container_status(
+            node: Annotated[str, Field(description="Host node name (e.g. 'pve1')")],
+            vmid: Annotated[str, Field(description="Container ID number (e.g. '200')")],
+        ):
+            return self.lxc_tools.get_container_status(node, vmid)
+
+        @self.mcp.tool(description=START_CONTAINER_DESC)
+        def start_container(
+            node: Annotated[str, Field(description="Host node name (e.g. 'pve1')")],
+            vmid: Annotated[str, Field(description="Container ID number (e.g. '200')")],
+        ):
+            return self.lxc_tools.start_container(node, vmid)
+
+        @self.mcp.tool(description=STOP_CONTAINER_DESC)
+        def stop_container(
+            node: Annotated[str, Field(description="Host node name (e.g. 'pve1')")],
+            vmid: Annotated[str, Field(description="Container ID number (e.g. '200')")],
+        ):
+            return self.lxc_tools.stop_container(node, vmid)
+
+        @self.mcp.tool(description=SHUTDOWN_CONTAINER_DESC)
+        def shutdown_container(
+            node: Annotated[str, Field(description="Host node name (e.g. 'pve1')")],
+            vmid: Annotated[str, Field(description="Container ID number (e.g. '200')")],
+        ):
+            return self.lxc_tools.shutdown_container(node, vmid)
+
+        @self.mcp.tool(description=REBOOT_CONTAINER_DESC)
+        def reboot_container(
+            node: Annotated[str, Field(description="Host node name (e.g. 'pve1')")],
+            vmid: Annotated[str, Field(description="Container ID number (e.g. '200')")],
+        ):
+            return self.lxc_tools.reboot_container(node, vmid)
 
         # Storage tools
         @self.mcp.tool(description=GET_STORAGE_DESC)

@@ -38,6 +38,61 @@ GET_CONTAINERS_DESC = """List all LXC containers across the cluster with their s
 Example:
 {"vmid": "200", "name": "nginx", "status": "running", "template": "ubuntu-20.04"}"""
 
+GET_CONTAINER_CONFIG_DESC = """Get the configuration for a specific LXC container.
+
+Parameters:
+node* - Host node name (e.g. 'pve1')
+vmid* - Container ID number (e.g. '200')
+
+Example:
+{"hostname": "nginx", "ostype": "debian", "cores": 2, "memory": 1024, "net0": "..."}"""
+
+GET_CONTAINER_STATUS_DESC = """Get detailed status for a specific LXC container.
+
+Parameters:
+node* - Host node name (e.g. 'pve1')
+vmid* - Container ID number (e.g. '200')
+
+Example:
+{"status": "running", "uptime": 3600, "cpu": 0.02, "mem": 134217728, "maxmem": 536870912}"""
+
+START_CONTAINER_DESC = """Start a stopped LXC container.
+
+Parameters:
+node* - Host node name (e.g. 'pve1')
+vmid* - Container ID number (e.g. '200')
+
+Example:
+{"task": "UPID:pve1:...", "status": "started"}"""
+
+STOP_CONTAINER_DESC = """Immediately stop a running LXC container (hard stop, no graceful shutdown).
+
+Parameters:
+node* - Host node name (e.g. 'pve1')
+vmid* - Container ID number (e.g. '200')
+
+Example:
+{"task": "UPID:pve1:...", "status": "stopped"}"""
+
+SHUTDOWN_CONTAINER_DESC = """Gracefully shut down a running LXC container.
+
+Parameters:
+node* - Host node name (e.g. 'pve1')
+vmid* - Container ID number (e.g. '200')
+
+Example:
+{"task": "UPID:pve1:...", "status": "shutdown initiated"}"""
+
+REBOOT_CONTAINER_DESC = """Reboot a running LXC container.
+
+Parameters:
+node* - Host node name (e.g. 'pve1')
+vmid* - Container ID number (e.g. '200')
+
+Example:
+{"task": "UPID:pve1:...", "status": "reboot initiated"}"""
+
+
 # Storage tool descriptions
 GET_STORAGE_DESC = """List storage pools across the cluster with their usage and configuration.
 
