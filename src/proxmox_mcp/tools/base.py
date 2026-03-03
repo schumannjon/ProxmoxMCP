@@ -64,6 +64,18 @@ class ProxmoxTool:
                 formatted = ProxmoxTemplates.node_status("unknown", data)
         elif resource_type == "vms":
             formatted = ProxmoxTemplates.vm_list(data)
+        elif resource_type == "vm_config":
+            # data is a tuple of (vmid, config_dict)
+            if isinstance(data, tuple) and len(data) == 2:
+                formatted = ProxmoxTemplates.vm_config(data[0], data[1])
+            else:
+                formatted = ProxmoxTemplates.vm_config("unknown", data)
+        elif resource_type == "vm_status":
+            # data is a tuple of (vmid, status_dict)
+            if isinstance(data, tuple) and len(data) == 2:
+                formatted = ProxmoxTemplates.vm_status(data[0], data[1])
+            else:
+                formatted = ProxmoxTemplates.vm_status("unknown", data)
         elif resource_type == "storage":
             formatted = ProxmoxTemplates.storage_list(data)
         elif resource_type == "container_config":
