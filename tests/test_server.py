@@ -65,8 +65,7 @@ async def test_list_tools(server):
     assert "get_nodes" in tool_names
     assert "get_vms" in tool_names
     assert "execute_vm_command" in tool_names
-    # get_containers is intentionally not registered (see CLAUDE.md)
-    assert "get_containers" not in tool_names
+    assert "get_containers" in tool_names
 
 @pytest.mark.asyncio
 async def test_get_nodes(server, mock_proxmox):
@@ -192,6 +191,40 @@ async def test_execute_vm_command_success(server, mock_proxmox):
 
     assert len(response) == 1
     assert "command output" in response[0].text
+
+@pytest.mark.asyncio
+async def test_get_containers(server, mock_proxmox):
+    """Test get_containers tool returns formatted text containing container names."""
+    mock_proxmox.return_value.nodes.get.return_value = [
+        {"node": "node1", "status": "online"}
+    ]
+    mock_proxmox.return_value.nodes.return_value.lxc.get.return_value = [
+        {"vmid": "200", "name": "ct1", "status": "running", "mem": 0, "maxmem": 0},
+        {"vmid": "201", "name": "ct2", "status": "stopped", "mem": 0, "maxmem": 0},
+    ]
+    mock_proxmox.return_value.nodes.return_value.lxc.return_value.config.get.return_value = {
+        "cores": 2
+    }
+
+    response = await server.mcp.call_tool("get_containers", {})
+
+    assert len(response) == 1
+    text = response[0].text
+    assert "ct1" in text
+    assert "ct2" in text
+
+@pytest.mark.asyncio
+async def test_get_containers_empty(server, mock_proxmox):
+    """Test get_containers tool with no containers returns a no-containers message."""
+    mock_proxmox.return_value.nodes.get.return_value = [
+        {"node": "node1", "status": "online"}
+    ]
+    mock_proxmox.return_value.nodes.return_value.lxc.get.return_value = []
+
+    response = await server.mcp.call_tool("get_containers", {})
+
+    assert len(response) == 1
+    assert "No containers" in response[0].text
 
 @pytest.mark.asyncio
 async def test_execute_vm_command_missing_parameters(server):

@@ -32,6 +32,7 @@ from .tools.node import NodeTools
 from .tools.vm import VMTools
 from .tools.storage import StorageTools
 from .tools.cluster import ClusterTools
+from .tools.lxc import LXCTools
 from .tools.definitions import (
     GET_NODES_DESC,
     GET_NODE_STATUS_DESC,
@@ -63,6 +64,7 @@ class ProxmoxMCPServer:
         self.vm_tools = VMTools(self.proxmox)
         self.storage_tools = StorageTools(self.proxmox)
         self.cluster_tools = ClusterTools(self.proxmox)
+        self.lxc_tools = LXCTools(self.proxmox)
         
         # Initialize MCP server
         self.mcp = FastMCP("ProxmoxMCP")
@@ -104,6 +106,11 @@ class ProxmoxMCPServer:
             command: Annotated[str, Field(description="Shell command to run (e.g. 'uname -a', 'systemctl status nginx')")]
         ):
             return await self.vm_tools.execute_command(node, vmid, command)
+
+        # LXC tools
+        @self.mcp.tool(description=GET_CONTAINERS_DESC)
+        def get_containers():
+            return self.lxc_tools.get_containers()
 
         # Storage tools
         @self.mcp.tool(description=GET_STORAGE_DESC)
