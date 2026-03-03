@@ -66,6 +66,7 @@ async def test_list_tools(server):
     assert "get_vms" in tool_names
     assert "execute_vm_command" in tool_names
     assert "get_containers" in tool_names
+    assert "get_container_config" in tool_names
     assert "get_container_status" in tool_names
     assert "start_container" in tool_names
     assert "stop_container" in tool_names
@@ -230,6 +231,37 @@ async def test_get_containers_empty(server, mock_proxmox):
 
     assert len(response) == 1
     assert "No containers" in response[0].text
+
+@pytest.mark.asyncio
+async def test_get_container_config(server, mock_proxmox):
+    """Test get_container_config returns formatted config for a specific container."""
+    mock_proxmox.return_value.nodes.return_value.lxc.return_value.config.get.return_value = {
+        "hostname": "nginx-proxy",
+        "ostype": "debian",
+        "cores": 2,
+        "memory": 1024,
+        "swap": 512,
+        "unprivileged": 1,
+        "onboot": 1,
+        "rootfs": "local-lvm:vm-200-disk-0,size=4G",
+        "net0": "name=eth0,bridge=vmbr0,ip=192.168.1.100/24,gw=192.168.1.1,type=veth",
+        "features": "nesting=1",
+    }
+
+    response = await server.mcp.call_tool("get_container_config", {"node": "node1", "vmid": "200"})
+
+    assert len(response) == 1
+    text = response[0].text
+    assert "nginx-proxy" in text
+    assert "debian" in text
+    assert "eth0" in text
+    assert "192.168.1.100/24" in text
+
+@pytest.mark.asyncio
+async def test_get_container_config_missing_parameters(server):
+    """Test get_container_config with missing parameters."""
+    with pytest.raises(ToolError, match="Field required"):
+        await server.mcp.call_tool("get_container_config", {})
 
 @pytest.mark.asyncio
 async def test_get_container_status(server, mock_proxmox):

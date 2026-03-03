@@ -38,6 +38,15 @@ GET_CONTAINERS_DESC = """List all LXC containers across the cluster with their s
 Example:
 {"vmid": "200", "name": "nginx", "status": "running", "template": "ubuntu-20.04"}"""
 
+GET_CONTAINER_CONFIG_DESC = """Get the configuration for a specific LXC container.
+
+Parameters:
+node* - Host node name (e.g. 'pve1')
+vmid* - Container ID number (e.g. '200')
+
+Example:
+{"hostname": "nginx", "ostype": "debian", "cores": 2, "memory": 1024, "net0": "..."}"""
+
 GET_CONTAINER_STATUS_DESC = """Get detailed status for a specific LXC container.
 
 Parameters:

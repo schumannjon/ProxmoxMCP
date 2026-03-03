@@ -39,6 +39,7 @@ from .tools.definitions import (
     GET_VMS_DESC,
     EXECUTE_VM_COMMAND_DESC,
     GET_CONTAINERS_DESC,
+    GET_CONTAINER_CONFIG_DESC,
     GET_CONTAINER_STATUS_DESC,
     START_CONTAINER_DESC,
     STOP_CONTAINER_DESC,
@@ -116,6 +117,13 @@ class ProxmoxMCPServer:
         @self.mcp.tool(description=GET_CONTAINERS_DESC)
         def get_containers():
             return self.lxc_tools.get_containers()
+
+        @self.mcp.tool(description=GET_CONTAINER_CONFIG_DESC)
+        def get_container_config(
+            node: Annotated[str, Field(description="Host node name (e.g. 'pve1')")],
+            vmid: Annotated[str, Field(description="Container ID number (e.g. '200')")],
+        ):
+            return self.lxc_tools.get_container_config(node, vmid)
 
         @self.mcp.tool(description=GET_CONTAINER_STATUS_DESC)
         def get_container_status(

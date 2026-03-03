@@ -11,6 +11,7 @@ from mcp.types import TextContent as Content
 from .base import ProxmoxTool
 from .definitions import (
     GET_CONTAINERS_DESC,
+    GET_CONTAINER_CONFIG_DESC,
     GET_CONTAINER_STATUS_DESC,
     START_CONTAINER_DESC,
     STOP_CONTAINER_DESC,
@@ -66,6 +67,29 @@ class LXCTools(ProxmoxTool):
             return self._format_response(result, "containers")
         except Exception as e:
             self._handle_error("get LXC containers", e)
+
+    def get_container_config(self, node: str, vmid: str) -> List[Content]:
+        """Get the configuration for a specific LXC container.
+
+        Returns the full container config including hostname, OS type, CPU,
+        memory, storage, network interfaces, features, and startup settings.
+
+        Args:
+            node: Host node name (e.g. 'pve1')
+            vmid: Container ID (e.g. '200')
+
+        Returns:
+            List of Content objects with formatted container config.
+
+        Raises:
+            ValueError: If the container is not found
+            RuntimeError: If config retrieval fails
+        """
+        try:
+            config = self.proxmox.nodes(node).lxc(vmid).config.get()
+            return self._format_response((vmid, config), "container_config")
+        except Exception as e:
+            self._handle_error(f"get config for container {vmid}", e)
 
     def get_container_status(self, node: str, vmid: str) -> List[Content]:
         """Get detailed status for a specific LXC container.

@@ -153,6 +153,100 @@ class ProxmoxTemplates:
         return "\n".join(result)
     
     @staticmethod
+    def _parse_config_string(value: str) -> Dict[str, str]:
+        """Parse a Proxmox config string like 'key=val,key2=val2' into a dict.
+
+        The first token may be a bare volume/device string with no '='.
+        """
+        result = {}
+        for token in value.split(","):
+            if "=" in token:
+                k, _, v = token.partition("=")
+                result[k.strip()] = v.strip()
+            else:
+                result["volume"] = token.strip()
+        return result
+
+    @staticmethod
+    def container_config(vmid: str, config: Dict[str, Any]) -> str:
+        """Template for LXC container configuration output.
+
+        Args:
+            vmid: Container ID
+            config: Container config data from the Proxmox API
+
+        Returns:
+            Formatted container config string
+        """
+        result = [
+            f"{ProxmoxTheme.RESOURCES['container']} Config: "
+            f"{config.get('hostname', vmid)} (ID: {vmid})"
+        ]
+
+        # Identity
+        result.append("\n  Identity")
+        result.append(f"  • Hostname:     {config.get('hostname', 'N/A')}")
+        result.append(f"  • OS Type:      {config.get('ostype', 'N/A')}")
+        result.append(f"  • Unprivileged: {'yes' if config.get('unprivileged') else 'no'}")
+        result.append(f"  • On Boot:      {'yes' if config.get('onboot') else 'no'}")
+        if config.get("tags"):
+            result.append(f"  • Tags:         {config['tags']}")
+        if config.get("description"):
+            result.append(f"  • Description:  {config['description'].strip()}")
+
+        # Resources
+        result.append("\n  Resources")
+        result.append(f"  • CPU Cores:    {config.get('cores', 'N/A')}")
+        if config.get("cpulimit"):
+            result.append(f"  • CPU Limit:    {config['cpulimit']}")
+        result.append(f"  • Memory:       {config.get('memory', 'N/A')} MB")
+        result.append(f"  • Swap:         {config.get('swap', 0)} MB")
+
+        # Storage — rootfs + any mount points
+        result.append("\n  Storage")
+        if config.get("rootfs"):
+            parsed = ProxmoxTemplates._parse_config_string(config["rootfs"])
+            vol = parsed.get("volume", config["rootfs"])
+            size = parsed.get("size", "?")
+            result.append(f"  • Root FS:      {vol} ({size})")
+        for i in range(10):
+            mp_key = f"mp{i}"
+            if config.get(mp_key):
+                parsed = ProxmoxTemplates._parse_config_string(config[mp_key])
+                vol = parsed.get("volume", "?")
+                mp = parsed.get("mp", "?")
+                size = parsed.get("size", "?")
+                result.append(f"  • mp{i}:          {vol} → {mp} ({size})")
+
+        # Network interfaces
+        result.append("\n  Network")
+        found_net = False
+        for i in range(10):
+            net_key = f"net{i}"
+            if config.get(net_key):
+                found_net = True
+                parsed = ProxmoxTemplates._parse_config_string(config[net_key])
+                name = parsed.get("name", net_key)
+                bridge = parsed.get("bridge", "?")
+                ip = parsed.get("ip", "dhcp")
+                ip6 = parsed.get("ip6", "")
+                gw = parsed.get("gw", "")
+                line = f"  • {name} ({net_key}): bridge={bridge}, ip={ip}"
+                if ip6:
+                    line += f", ip6={ip6}"
+                if gw:
+                    line += f", gw={gw}"
+                result.append(line)
+        if not found_net:
+            result.append("  • No network interfaces configured")
+
+        # Features
+        if config.get("features"):
+            result.append(f"\n  Features: {config['features']}")
+
+        return "\n".join(result)
+
+    @staticmethod
     def container_status(vmid: str, status: Dict[str, Any]) -> str:
         """Template for detailed container status output.
 
