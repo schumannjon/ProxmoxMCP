@@ -121,9 +121,48 @@ class ProxmoxTemplates:
                 f"  • Memory: {ProxmoxFormatters.format_bytes(memory_used)} / "
                 f"{ProxmoxFormatters.format_bytes(memory_total)} ({memory_percent:.1f}%)"
             ])
+            if vm.get("template"):
+                result.append("  • Template: yes")
             
         return "\n".join(result)
     
+    @staticmethod
+    def vm_status(vmid: str, status: Dict[str, Any]) -> str:
+        """Template for detailed VM status output.
+
+        Args:
+            vmid: VM ID
+            status: VM status data from the Proxmox API
+
+        Returns:
+            Formatted VM status string
+        """
+        memory_used = status.get("mem", 0)
+        memory_total = status.get("maxmem", 0)
+        memory_percent = (memory_used / memory_total * 100) if memory_total > 0 else 0
+
+        disk_used = status.get("disk", 0)
+        disk_total = status.get("maxdisk", 0)
+        disk_percent = (disk_used / disk_total * 100) if disk_total > 0 else 0
+
+        cpu_percent = status.get("cpu", 0) * 100
+
+        result = [
+            f"{ProxmoxTheme.RESOURCES['vm']} VM: {status.get('name', vmid)} (ID: {vmid})",
+            f"  • Status: {status.get('status', 'unknown').upper()}",
+            f"  • Uptime: {ProxmoxFormatters.format_uptime(status.get('uptime', 0))}",
+            f"  • CPU Cores: {status.get('cpus', 'N/A')}",
+            f"  • CPU Usage: {cpu_percent:.1f}%",
+            f"  • Memory: {ProxmoxFormatters.format_bytes(memory_used)} / "
+            f"{ProxmoxFormatters.format_bytes(memory_total)} ({memory_percent:.1f}%)",
+            f"  • Disk: {ProxmoxFormatters.format_bytes(disk_used)} / "
+            f"{ProxmoxFormatters.format_bytes(disk_total)} ({disk_percent:.1f}%)",
+        ]
+        if status.get("template"):
+            result.append("  • Template: yes")
+
+        return "\n".join(result)
+
     @staticmethod
     def storage_list(storage: List[Dict[str, Any]]) -> str:
         """Template for storage list output.
@@ -166,6 +205,92 @@ class ProxmoxTemplates:
             else:
                 result["volume"] = token.strip()
         return result
+
+    @staticmethod
+    def vm_config(vmid: str, config: Dict[str, Any]) -> str:
+        """Template for VM configuration output.
+
+        Args:
+            vmid: VM ID
+            config: VM config data from the Proxmox API
+
+        Returns:
+            Formatted VM config string
+        """
+        result = [
+            f"{ProxmoxTheme.RESOURCES['vm']} Config: "
+            f"{config.get('name', vmid)} (ID: {vmid})"
+        ]
+
+        # Identity
+        result.append("\n  Identity")
+        result.append(f"  • Name:         {config.get('name', 'N/A')}")
+        result.append(f"  • OS Type:      {config.get('ostype', 'N/A')}")
+        result.append(f"  • BIOS:         {config.get('bios', 'seabios')}")
+        result.append(f"  • Machine:      {config.get('machine', 'N/A')}")
+        result.append(f"  • On Boot:      {'yes' if config.get('onboot') else 'no'}")
+        if config.get("template"):
+            result.append("  • Template:     yes")
+        if config.get("tags"):
+            result.append(f"  • Tags:         {config['tags']}")
+        if config.get("description"):
+            result.append(f"  • Description:  {config['description'].strip()}")
+
+        # Resources
+        result.append("\n  Resources")
+        sockets = config.get("sockets", 1)
+        cores = config.get("cores", "N/A")
+        result.append(f"  • CPU:          {cores} cores × {sockets} socket(s)")
+        result.append(f"  • CPU Type:     {config.get('cpu', 'N/A')}")
+        result.append(f"  • Memory:       {config.get('memory', 'N/A')} MB")
+        if config.get("balloon"):
+            result.append(f"  • Balloon:      {config['balloon']} MB")
+
+        # Storage — bootdisk + all disk interfaces
+        result.append("\n  Storage")
+        boot_disk = config.get("bootdisk", "")
+        if boot_disk:
+            result.append(f"  • Boot Disk:    {boot_disk}")
+        disk_prefixes = ("scsi", "virtio", "ide", "sata")
+        found_disk = False
+        for prefix in disk_prefixes:
+            for i in range(16):
+                key = f"{prefix}{i}"
+                if config.get(key):
+                    found_disk = True
+                    parsed = ProxmoxTemplates._parse_config_string(config[key])
+                    vol = parsed.get("volume", config[key])
+                    size = parsed.get("size", "?")
+                    media = parsed.get("media", "")
+                    line = f"  • {key}:        {vol} ({size})"
+                    if media:
+                        line += f" [{media}]"
+                    result.append(line)
+        if not found_disk and not boot_disk:
+            result.append("  • No disks configured")
+
+        # Network interfaces
+        result.append("\n  Network")
+        found_net = False
+        for i in range(10):
+            net_key = f"net{i}"
+            if config.get(net_key):
+                found_net = True
+                parsed = ProxmoxTemplates._parse_config_string(config[net_key])
+                model = next((parsed.get(m) for m in ("virtio", "e1000", "vmxnet3", "rtl8139") if parsed.get(m)), "?")
+                bridge = parsed.get("bridge", "?")
+                line = f"  • {net_key}: bridge={bridge}, model={list(parsed.keys())[0]}, mac={model}"
+                if parsed.get("tag"):
+                    line += f", vlan={parsed['tag']}"
+                result.append(line)
+        if not found_net:
+            result.append("  • No network interfaces configured")
+
+        # Agent
+        if config.get("agent"):
+            result.append(f"\n  Agent: {config['agent']}")
+
+        return "\n".join(result)
 
     @staticmethod
     def container_config(vmid: str, config: Dict[str, Any]) -> str:

@@ -17,7 +17,9 @@ A Python-based Model Context Protocol (MCP) server for interacting with Proxmox 
 - 🛠️ Built with the official MCP SDK
 - 🔒 Secure token-based authentication with Proxmox
 - 🖥️ Tools for managing nodes and VMs
+- 🔁 Full VM lifecycle management (start, stop, shutdown, reboot, clone)
 - 📦 Full LXC container management (list, status, lifecycle controls)
+- 🏷️ Template VM indicator in VM listings, status, and config
 - 💻 VM console command execution via QEMU guest agent
 - 🐳 Docker support for containerized deployment
 - 📝 Configurable logging system
@@ -246,7 +248,7 @@ Get detailed status of a specific node.
   ```
 
 ### get_vms
-List all VMs across the cluster.
+List all VMs across the cluster. Template VMs are identified with a `Template: yes` indicator.
 
 - Parameters: None
 - Example Response:
@@ -259,12 +261,114 @@ List all VMs across the cluster.
     • CPU Cores: 16
     • Memory: 92.3 GB / 128.0 GB (72.1%)
 
-  🗃️ prod-web-01 (ID: 102)
-    • Status: RUNNING
+  🗃️ ubuntu-22-template (ID: 110)
+    • Status: STOPPED
     • Node: pve-compute-01
-    • CPU Cores: 8
-    • Memory: 12.8 GB / 32.0 GB (40.0%)
+    • CPU Cores: 2
+    • Memory: 0.00 B / 2.00 GB (0.0%)
+    • Template: yes
   ```
+
+### get_vm_status
+Get detailed status of a specific VM.
+
+- Parameters:
+  - `node` (string, required): Name of the node hosting the VM
+  - `vmid` (string, required): ID of the VM
+- Example Response:
+  ```
+  🗃️ VM: prod-db-master (ID: 100)
+    • Status: RUNNING
+    • Uptime: ⏳ 10d 4h 22m
+    • CPU Cores: 16
+    • CPU Usage: 38.6%
+    • Memory: 92.3 GB / 128.0 GB (72.1%)
+    • Disk: 120.0 GB / 500.0 GB (24.0%)
+  ```
+
+### get_vm_config
+Get the full configuration of a specific VM.
+
+- Parameters:
+  - `node` (string, required): Name of the node hosting the VM
+  - `vmid` (string, required): ID of the VM
+- Example Response:
+  ```
+  🗃️ Config: prod-db-master (ID: 100)
+
+    Identity
+    • Name:         prod-db-master
+    • OS Type:      l26
+    • BIOS:         seabios
+    • Machine:      pc-i440fx-8.1
+    • On Boot:      yes
+
+    Resources
+    • CPU:          16 cores × 1 socket(s)
+    • CPU Type:     kvm64
+    • Memory:       32768 MB
+
+    Storage
+    • Boot Disk:    scsi0
+    • scsi0:        local-lvm:vm-100-disk-0 (500G)
+
+    Network
+    • net0: bridge=vmbr0, model=virtio, mac=BC:24:11:AA:BB:CC
+  ```
+
+### start_vm
+Start a stopped VM.
+
+- Parameters:
+  - `node` (string, required): Name of the node hosting the VM
+  - `vmid` (string, required): ID of the VM
+- Example Response:
+  ```
+  VM 100 start initiated
+  Task ID: UPID:proxmox:00001234:...
+  ```
+
+### stop_vm
+Immediately stop a running VM (hard stop, no graceful shutdown).
+
+- Parameters:
+  - `node` (string, required): Name of the node hosting the VM
+  - `vmid` (string, required): ID of the VM
+
+### shutdown_vm
+Gracefully shut down a running VM via ACPI.
+
+- Parameters:
+  - `node` (string, required): Name of the node hosting the VM
+  - `vmid` (string, required): ID of the VM
+
+### reboot_vm
+Gracefully reboot a running VM.
+
+- Parameters:
+  - `node` (string, required): Name of the node hosting the VM
+  - `vmid` (string, required): ID of the VM
+
+### clone_vm
+Clone a VM or template to a new VM.
+
+- Parameters:
+  - `node` (string, required): Name of the node hosting the source VM
+  - `vmid` (string, required): ID of the source VM or template
+  - `newid` (string, required): ID for the new cloned VM
+  - `name` (string, optional): Name for the new VM
+  - `target` (string, optional): Target node for the clone (defaults to same node)
+  - `full` (boolean, optional): Full clone if `true`, linked clone if `false` (default: `true`)
+- Example Response:
+  ```
+  VM 110 clone initiated
+  New VM ID: 999
+  Task ID: UPID:proxmox:00001234:...
+  ```
+- Notes:
+  - Full clones create an independent copy of all disks — ensure sufficient storage headroom
+  - Linked clones are faster and use less storage but depend on the source template remaining intact
+  - The clone operation is asynchronous; use `get_vm_status` to confirm completion
 
 ### get_storage
 List available storage.
@@ -361,6 +465,34 @@ List all LXC containers across the cluster.
     • Node: proxmox
     • CPU Cores: 4
     • Memory: 1.8 GB / 4.0 GB (45.0%)
+  ```
+
+### get_container_config
+Get the full configuration of a specific LXC container.
+
+- Parameters:
+  - `node` (string, required): Name of the node hosting the container
+  - `vmid` (string, required): ID of the container
+- Example Response:
+  ```
+  📦 Config: nginx-proxy (ID: 200)
+
+    Identity
+    • Hostname:     nginx-proxy
+    • OS Type:      debian
+    • Unprivileged: yes
+    • On Boot:      yes
+
+    Resources
+    • CPU Cores:    2
+    • Memory:       1024 MB
+    • Swap:         512 MB
+
+    Storage
+    • Root FS:      local-lvm:vm-200-disk-0 (8G)
+
+    Network
+    • eth0 (net0): bridge=vmbr0, ip=192.168.1.100/24
   ```
 
 ### get_container_status
