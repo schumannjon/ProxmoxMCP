@@ -32,6 +32,73 @@ command* - Shell command to run (e.g. 'uname -a')
 Example:
 {"success": true, "output": "Linux vm1 5.4.0", "exit_code": 0}"""
 
+GET_VM_CONFIG_DESC = """Get the configuration for a specific virtual machine.
+
+Parameters:
+node* - Host node name (e.g. 'pve1')
+vmid* - VM ID number (e.g. '100')
+
+Example:
+{"name": "ubuntu", "ostype": "l26", "cores": 2, "memory": 2048, "net0": "..."}"""
+
+GET_VM_STATUS_DESC = """Get detailed status for a specific virtual machine.
+
+Parameters:
+node* - Host node name (e.g. 'pve1')
+vmid* - VM ID number (e.g. '100')
+
+Example:
+{"status": "running", "uptime": 3600, "cpu": 0.02, "mem": 1073741824, "maxmem": 4294967296}"""
+
+START_VM_DESC = """Start a stopped virtual machine.
+
+Parameters:
+node* - Host node name (e.g. 'pve1')
+vmid* - VM ID number (e.g. '100')
+
+Example:
+{"task": "UPID:pve1:...", "status": "started"}"""
+
+STOP_VM_DESC = """Immediately stop a running virtual machine (hard stop, no graceful shutdown).
+
+Parameters:
+node* - Host node name (e.g. 'pve1')
+vmid* - VM ID number (e.g. '100')
+
+Example:
+{"task": "UPID:pve1:...", "status": "stopped"}"""
+
+SHUTDOWN_VM_DESC = """Gracefully shut down a running virtual machine.
+
+Parameters:
+node* - Host node name (e.g. 'pve1')
+vmid* - VM ID number (e.g. '100')
+
+Example:
+{"task": "UPID:pve1:...", "status": "shutdown initiated"}"""
+
+REBOOT_VM_DESC = """Reboot a running virtual machine.
+
+Parameters:
+node* - Host node name (e.g. 'pve1')
+vmid* - VM ID number (e.g. '100')
+
+Example:
+{"task": "UPID:pve1:...", "status": "reboot initiated"}"""
+
+CLONE_VM_DESC = """Clone a virtual machine or template to a new VM.
+
+Parameters:
+node*   - Host node name (e.g. 'pve1')
+vmid*   - Source VM/template ID (e.g. '100')
+newid*  - New VM ID for the clone (e.g. '200')
+name    - Name for the new VM (optional)
+target  - Target node for the clone (optional, defaults to same node)
+full    - Full clone (true) or linked clone (false, default true)
+
+Example:
+{"task": "UPID:pve1:...", "newid": 200}"""
+
 # Container tool descriptions
 GET_CONTAINERS_DESC = """List all LXC containers across the cluster with their status and configuration.
 

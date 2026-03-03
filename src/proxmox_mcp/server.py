@@ -37,7 +37,14 @@ from .tools.definitions import (
     GET_NODES_DESC,
     GET_NODE_STATUS_DESC,
     GET_VMS_DESC,
+    GET_VM_CONFIG_DESC,
+    GET_VM_STATUS_DESC,
     EXECUTE_VM_COMMAND_DESC,
+    START_VM_DESC,
+    STOP_VM_DESC,
+    SHUTDOWN_VM_DESC,
+    REBOOT_VM_DESC,
+    CLONE_VM_DESC,
     GET_CONTAINERS_DESC,
     GET_CONTAINER_CONFIG_DESC,
     GET_CONTAINER_STATUS_DESC,
@@ -104,6 +111,59 @@ class ProxmoxMCPServer:
         @self.mcp.tool(description=GET_VMS_DESC)
         def get_vms():
             return self.vm_tools.get_vms()
+
+        @self.mcp.tool(description=GET_VM_CONFIG_DESC)
+        def get_vm_config(
+            node: Annotated[str, Field(description="Host node name (e.g. 'pve1')")],
+            vmid: Annotated[str, Field(description="VM ID number (e.g. '100')")],
+        ):
+            return self.vm_tools.get_vm_config(node, vmid)
+
+        @self.mcp.tool(description=GET_VM_STATUS_DESC)
+        def get_vm_status(
+            node: Annotated[str, Field(description="Host node name (e.g. 'pve1')")],
+            vmid: Annotated[str, Field(description="VM ID number (e.g. '100')")],
+        ):
+            return self.vm_tools.get_vm_status(node, vmid)
+
+        @self.mcp.tool(description=START_VM_DESC)
+        def start_vm(
+            node: Annotated[str, Field(description="Host node name (e.g. 'pve1')")],
+            vmid: Annotated[str, Field(description="VM ID number (e.g. '100')")],
+        ):
+            return self.vm_tools.start_vm(node, vmid)
+
+        @self.mcp.tool(description=STOP_VM_DESC)
+        def stop_vm(
+            node: Annotated[str, Field(description="Host node name (e.g. 'pve1')")],
+            vmid: Annotated[str, Field(description="VM ID number (e.g. '100')")],
+        ):
+            return self.vm_tools.stop_vm(node, vmid)
+
+        @self.mcp.tool(description=SHUTDOWN_VM_DESC)
+        def shutdown_vm(
+            node: Annotated[str, Field(description="Host node name (e.g. 'pve1')")],
+            vmid: Annotated[str, Field(description="VM ID number (e.g. '100')")],
+        ):
+            return self.vm_tools.shutdown_vm(node, vmid)
+
+        @self.mcp.tool(description=REBOOT_VM_DESC)
+        def reboot_vm(
+            node: Annotated[str, Field(description="Host node name (e.g. 'pve1')")],
+            vmid: Annotated[str, Field(description="VM ID number (e.g. '100')")],
+        ):
+            return self.vm_tools.reboot_vm(node, vmid)
+
+        @self.mcp.tool(description=CLONE_VM_DESC)
+        def clone_vm(
+            node: Annotated[str, Field(description="Host node name (e.g. 'pve1')")],
+            vmid: Annotated[str, Field(description="Source VM/template ID (e.g. '100')")],
+            newid: Annotated[str, Field(description="New VM ID for the clone (e.g. '200')")],
+            name: Annotated[Optional[str], Field(description="Name for the new VM")] = None,
+            target: Annotated[Optional[str], Field(description="Target node for the clone")] = None,
+            full: Annotated[bool, Field(description="Full clone (true) or linked clone (false)")] = True,
+        ):
+            return self.vm_tools.clone_vm(node, vmid, newid, name, target, full)
 
         @self.mcp.tool(description=EXECUTE_VM_COMMAND_DESC)
         async def execute_vm_command(

@@ -13,10 +13,20 @@ This module provides tools for managing and interacting with Proxmox VMs:
 The tools implement fallback mechanisms for scenarios where
 detailed VM information might be temporarily unavailable.
 """
-from typing import List
+from typing import List, Optional
 from mcp.types import TextContent as Content
 from .base import ProxmoxTool
-from .definitions import GET_VMS_DESC, EXECUTE_VM_COMMAND_DESC
+from .definitions import (
+    GET_VMS_DESC,
+    GET_VM_CONFIG_DESC,
+    GET_VM_STATUS_DESC,
+    EXECUTE_VM_COMMAND_DESC,
+    START_VM_DESC,
+    STOP_VM_DESC,
+    SHUTDOWN_VM_DESC,
+    REBOOT_VM_DESC,
+    CLONE_VM_DESC,
+)
 from .console.manager import VMConsoleManager
 
 class VMTools(ProxmoxTool):
@@ -83,7 +93,7 @@ class VMTools(ProxmoxTool):
                     # Get VM config for CPU cores
                     try:
                         config = self.proxmox.nodes(node_name).qemu(vmid).config.get()
-                        result.append({
+                        entry = {
                             "vmid": vmid,
                             "name": vm["name"],
                             "status": vm["status"],
@@ -93,10 +103,13 @@ class VMTools(ProxmoxTool):
                                 "used": vm.get("mem", 0),
                                 "total": vm.get("maxmem", 0)
                             }
-                        })
+                        }
+                        if vm.get("template"):
+                            entry["template"] = vm["template"]
+                        result.append(entry)
                     except Exception:
                         # Fallback if can't get config
-                        result.append({
+                        entry = {
                             "vmid": vmid,
                             "name": vm["name"],
                             "status": vm["status"],
@@ -106,10 +119,128 @@ class VMTools(ProxmoxTool):
                                 "used": vm.get("mem", 0),
                                 "total": vm.get("maxmem", 0)
                             }
-                        })
+                        }
+                        if vm.get("template"):
+                            entry["template"] = vm["template"]
+                        result.append(entry)
             return self._format_response(result, "vms")
         except Exception as e:
             self._handle_error("get VMs", e)
+
+    def get_vm_config(self, node: str, vmid: str) -> List[Content]:
+        """Get the configuration for a specific VM.
+
+        Args:
+            node: Host node name (e.g. 'pve1')
+            vmid: VM ID (e.g. '100')
+
+        Returns:
+            List of Content objects with formatted VM config.
+
+        Raises:
+            ValueError: If the VM is not found
+            RuntimeError: If config retrieval fails
+        """
+        try:
+            config = self.proxmox.nodes(node).qemu(vmid).config.get()
+            return self._format_response((vmid, config), "vm_config")
+        except Exception as e:
+            self._handle_error(f"get config for VM {vmid}", e)
+
+    def get_vm_status(self, node: str, vmid: str) -> List[Content]:
+        """Get detailed status for a specific VM.
+
+        Args:
+            node: Host node name (e.g. 'pve1')
+            vmid: VM ID (e.g. '100')
+
+        Returns:
+            List of Content objects with formatted VM status.
+
+        Raises:
+            ValueError: If the VM is not found
+            RuntimeError: If status retrieval fails
+        """
+        try:
+            status = self.proxmox.nodes(node).qemu(vmid).status.current.get()
+            return self._format_response((vmid, status), "vm_status")
+        except Exception as e:
+            self._handle_error(f"get status for VM {vmid}", e)
+
+    def _lifecycle_action(self, node: str, vmid: str, action: str) -> List[Content]:
+        """Perform a lifecycle action (start/stop/shutdown/reboot) on a VM.
+
+        Args:
+            node: Host node name
+            vmid: VM ID
+            action: One of 'start', 'stop', 'shutdown', 'reboot'
+
+        Returns:
+            List of Content objects with the task ID returned by Proxmox.
+        """
+        try:
+            endpoint = getattr(self.proxmox.nodes(node).qemu(vmid).status, action)
+            task_id = endpoint.post()
+            text = f"VM {vmid} {action} initiated\nTask ID: {task_id}"
+            from mcp.types import TextContent
+            return [TextContent(type="text", text=text)]
+        except Exception as e:
+            self._handle_error(f"{action} VM {vmid}", e)
+
+    def start_vm(self, node: str, vmid: str) -> List[Content]:
+        """Start a stopped virtual machine."""
+        return self._lifecycle_action(node, vmid, "start")
+
+    def stop_vm(self, node: str, vmid: str) -> List[Content]:
+        """Immediately stop a running virtual machine (hard stop)."""
+        return self._lifecycle_action(node, vmid, "stop")
+
+    def shutdown_vm(self, node: str, vmid: str) -> List[Content]:
+        """Gracefully shut down a running virtual machine."""
+        return self._lifecycle_action(node, vmid, "shutdown")
+
+    def reboot_vm(self, node: str, vmid: str) -> List[Content]:
+        """Reboot a running virtual machine."""
+        return self._lifecycle_action(node, vmid, "reboot")
+
+    def clone_vm(
+        self,
+        node: str,
+        vmid: str,
+        newid: str,
+        name: Optional[str] = None,
+        target: Optional[str] = None,
+        full: bool = True,
+    ) -> List[Content]:
+        """Clone a virtual machine or template to a new VM.
+
+        Args:
+            node: Host node name (e.g. 'pve1')
+            vmid: Source VM/template ID
+            newid: New VM ID for the clone
+            name: Optional name for the new VM
+            target: Optional target node (defaults to same node)
+            full: Full clone if True, linked clone if False
+
+        Returns:
+            List of Content objects with the new VM ID and task ID.
+
+        Raises:
+            ValueError: If the source VM is not found
+            RuntimeError: If the clone operation fails
+        """
+        try:
+            params = {"newid": int(newid), "full": 1 if full else 0}
+            if name:
+                params["name"] = name
+            if target:
+                params["target"] = target
+            task_id = self.proxmox.nodes(node).qemu(vmid).clone.post(**params)
+            from mcp.types import TextContent
+            text = f"VM {vmid} clone initiated\nNew VM ID: {newid}\nTask ID: {task_id}"
+            return [TextContent(type="text", text=text)]
+        except Exception as e:
+            self._handle_error(f"clone VM {vmid}", e)
 
     async def execute_command(self, node: str, vmid: str, command: str) -> List[Content]:
         """Execute a command in a VM via QEMU guest agent.

@@ -64,6 +64,12 @@ async def test_list_tools(server):
     tool_names = [tool.name for tool in tools]
     assert "get_nodes" in tool_names
     assert "get_vms" in tool_names
+    assert "get_vm_config" in tool_names
+    assert "get_vm_status" in tool_names
+    assert "start_vm" in tool_names
+    assert "stop_vm" in tool_names
+    assert "shutdown_vm" in tool_names
+    assert "reboot_vm" in tool_names
     assert "execute_vm_command" in tool_names
     assert "get_containers" in tool_names
     assert "get_container_config" in tool_names
@@ -72,6 +78,7 @@ async def test_list_tools(server):
     assert "stop_container" in tool_names
     assert "shutdown_container" in tool_names
     assert "reboot_container" in tool_names
+    assert "clone_vm" in tool_names
 
 @pytest.mark.asyncio
 async def test_get_nodes(server, mock_proxmox):
@@ -124,7 +131,7 @@ async def test_get_vms(server, mock_proxmox):
     ]
     mock_proxmox.return_value.nodes.return_value.qemu.get.return_value = [
         {"vmid": "100", "name": "vm1", "status": "running", "mem": 0, "maxmem": 0},
-        {"vmid": "101", "name": "vm2", "status": "stopped", "mem": 0, "maxmem": 0}
+        {"vmid": "101", "name": "vm2", "status": "stopped", "mem": 0, "maxmem": 0, "template": 1},
     ]
     mock_proxmox.return_value.nodes.return_value.qemu.return_value.config.get.return_value = {
         "cores": 2
@@ -136,6 +143,117 @@ async def test_get_vms(server, mock_proxmox):
     text = response[0].text
     assert "vm1" in text
     assert "vm2" in text
+    assert "Template" in text
+
+@pytest.mark.asyncio
+async def test_get_vm_config(server, mock_proxmox):
+    """Test get_vm_config returns formatted config for a specific VM."""
+    mock_proxmox.return_value.nodes.return_value.qemu.return_value.config.get.return_value = {
+        "name": "ubuntu-server",
+        "ostype": "l26",
+        "cores": 4,
+        "sockets": 1,
+        "memory": 4096,
+        "bios": "seabios",
+        "machine": "pc-i440fx-8.1",
+        "onboot": 1,
+        "bootdisk": "scsi0",
+        "scsi0": "local-lvm:vm-100-disk-0,size=32G",
+        "net0": "virtio=BC:24:11:AA:BB:CC,bridge=vmbr0",
+        "agent": "enabled=1",
+    }
+
+    response = await server.mcp.call_tool("get_vm_config", {"node": "node1", "vmid": "100"})
+
+    assert len(response) == 1
+    text = response[0].text
+    assert "ubuntu-server" in text
+    assert "l26" in text
+    assert "scsi0" in text
+    assert "vmbr0" in text
+
+@pytest.mark.asyncio
+async def test_get_vm_config_missing_parameters(server):
+    """Test get_vm_config with missing parameters."""
+    with pytest.raises(ToolError, match="Field required"):
+        await server.mcp.call_tool("get_vm_config", {})
+
+@pytest.mark.asyncio
+async def test_get_vm_status(server, mock_proxmox):
+    """Test get_vm_status tool returns formatted text with VM status info."""
+    mock_proxmox.return_value.nodes.return_value.qemu.return_value.status.current.get.return_value = {
+        "status": "running",
+        "name": "vm1",
+        "uptime": 3600,
+        "cpus": 4,
+        "cpu": 0.10,
+        "mem": 2147483648,
+        "maxmem": 8589934592,
+        "disk": 10737418240,
+        "maxdisk": 53687091200,
+    }
+
+    response = await server.mcp.call_tool("get_vm_status", {"node": "node1", "vmid": "100"})
+
+    assert len(response) == 1
+    text = response[0].text
+    assert "vm1" in text
+    assert "RUNNING" in text
+
+@pytest.mark.asyncio
+async def test_get_vm_status_missing_parameters(server):
+    """Test get_vm_status with missing parameters."""
+    with pytest.raises(ToolError, match="Field required"):
+        await server.mcp.call_tool("get_vm_status", {})
+
+@pytest.mark.asyncio
+async def test_start_vm(server, mock_proxmox):
+    """Test start_vm returns a task ID."""
+    mock_proxmox.return_value.nodes.return_value.qemu.return_value.status.start.post.return_value = (
+        "UPID:node1:00001234:00000001:5E3F4A2B:qmstart:100:root@pam:"
+    )
+
+    response = await server.mcp.call_tool("start_vm", {"node": "node1", "vmid": "100"})
+
+    assert len(response) == 1
+    assert "start" in response[0].text
+    assert "100" in response[0].text
+
+@pytest.mark.asyncio
+async def test_stop_vm(server, mock_proxmox):
+    """Test stop_vm returns a task ID."""
+    mock_proxmox.return_value.nodes.return_value.qemu.return_value.status.stop.post.return_value = (
+        "UPID:node1:00001234:00000001:5E3F4A2B:qmstop:100:root@pam:"
+    )
+
+    response = await server.mcp.call_tool("stop_vm", {"node": "node1", "vmid": "100"})
+
+    assert len(response) == 1
+    assert "stop" in response[0].text
+
+@pytest.mark.asyncio
+async def test_shutdown_vm(server, mock_proxmox):
+    """Test shutdown_vm returns a task ID."""
+    mock_proxmox.return_value.nodes.return_value.qemu.return_value.status.shutdown.post.return_value = (
+        "UPID:node1:00001234:00000001:5E3F4A2B:qmshutdown:100:root@pam:"
+    )
+
+    response = await server.mcp.call_tool("shutdown_vm", {"node": "node1", "vmid": "100"})
+
+    assert len(response) == 1
+    assert "shutdown" in response[0].text
+
+@pytest.mark.asyncio
+async def test_reboot_vm(server, mock_proxmox):
+    """Test reboot_vm returns a task ID."""
+    mock_proxmox.return_value.nodes.return_value.qemu.return_value.status.reboot.post.return_value = (
+        "UPID:node1:00001234:00000001:5E3F4A2B:qmreboot:100:root@pam:"
+    )
+
+    response = await server.mcp.call_tool("reboot_vm", {"node": "node1", "vmid": "100"})
+
+    assert len(response) == 1
+    assert "reboot" in response[0].text
 
 @pytest.mark.asyncio
 async def test_get_storage(server, mock_proxmox):
@@ -384,3 +502,27 @@ async def test_execute_vm_command_with_error(server, mock_proxmox):
 
     assert len(response) == 1
     assert "command not found" in response[0].text
+
+@pytest.mark.asyncio
+async def test_clone_vm(server, mock_proxmox):
+    """Test clone_vm returns new VM ID and task ID."""
+    mock_proxmox.return_value.nodes.return_value.qemu.return_value.clone.post.return_value = (
+        "UPID:node1:00001234:00000001:5E3F4A2B:qmclone:100:root@pam:"
+    )
+
+    response = await server.mcp.call_tool("clone_vm", {
+        "node": "node1",
+        "vmid": "100",
+        "newid": "200",
+    })
+
+    assert len(response) == 1
+    text = response[0].text
+    assert "200" in text
+    assert "UPID" in text
+
+@pytest.mark.asyncio
+async def test_clone_vm_missing_parameters(server):
+    """Test clone_vm with missing required parameters raises ToolError."""
+    with pytest.raises(ToolError, match="Field required"):
+        await server.mcp.call_tool("clone_vm", {})
