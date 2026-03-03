@@ -1,0 +1,9 @@
+.venv/
+tests/
+*.log
+proxmox-config/
+.git/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+Graphics/
