@@ -44,7 +44,6 @@ from .tools.definitions import (
     STOP_CONTAINER_DESC,
     SHUTDOWN_CONTAINER_DESC,
     REBOOT_CONTAINER_DESC,
-    EXECUTE_CONTAINER_COMMAND_DESC,
     GET_STORAGE_DESC,
     GET_CLUSTER_STATUS_DESC,
 )
@@ -152,14 +151,6 @@ class ProxmoxMCPServer:
             vmid: Annotated[str, Field(description="Container ID number (e.g. '200')")],
         ):
             return self.lxc_tools.reboot_container(node, vmid)
-
-        @self.mcp.tool(description=EXECUTE_CONTAINER_COMMAND_DESC)
-        async def execute_container_command(
-            node: Annotated[str, Field(description="Host node name (e.g. 'pve1')")],
-            vmid: Annotated[str, Field(description="Container ID number (e.g. '200')")],
-            command: Annotated[str, Field(description="Shell command to run (e.g. 'uname -a')")],
-        ):
-            return await self.lxc_tools.execute_container_command(node, vmid, command)
 
         # Storage tools
         @self.mcp.tool(description=GET_STORAGE_DESC)

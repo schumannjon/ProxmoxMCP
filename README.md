@@ -17,8 +17,8 @@ A Python-based Model Context Protocol (MCP) server for interacting with Proxmox 
 - 🛠️ Built with the official MCP SDK
 - 🔒 Secure token-based authentication with Proxmox
 - 🖥️ Tools for managing nodes and VMs
-- 📦 Full LXC container management (list, status, lifecycle, command execution)
-- 💻 VM and container console command execution
+- 📦 Full LXC container management (list, status, lifecycle controls)
+- 💻 VM console command execution via QEMU guest agent
 - 🐳 Docker support for containerized deployment
 - 📝 Configurable logging system
 - ✅ Type-safe implementation with Pydantic
@@ -413,26 +413,6 @@ Reboot a running LXC container.
   - `node` (string, required): Name of the node hosting the container
   - `vmid` (string, required): ID of the container
 
-### execute_container_command
-Execute a command inside a running LXC container.
-
-- Parameters:
-  - `node` (string, required): Name of the node hosting the container
-  - `vmid` (string, required): ID of the container
-  - `command` (string, required): Command to execute
-- Example Response:
-  ```
-  🔧 Console Command Result
-    • Status: SUCCESS
-    • Command: uname -a
-
-  Output:
-  Linux nginx-proxy 6.1.0-28-amd64 #1 SMP Debian 6.1.0 x86_64 GNU/Linux
-  ```
-- Requirements:
-  - Container must be running
-- Note:
-  - Unlike VM command execution (which uses QEMU guest agent), LXC containers are executed directly via the Proxmox API without requiring any agent installation
 
 ## 👨‍💻 Development
 

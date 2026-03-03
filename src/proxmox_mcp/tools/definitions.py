@@ -83,17 +83,6 @@ vmid* - Container ID number (e.g. '200')
 Example:
 {"task": "UPID:pve1:...", "status": "reboot initiated"}"""
 
-EXECUTE_CONTAINER_COMMAND_DESC = """Execute a command inside a running LXC container.
-
-Parameters:
-node*    - Host node name (e.g. 'pve1')
-vmid*    - Container ID number (e.g. '200')
-command* - Shell command to run (e.g. 'uname -a')
-
-Requires the container to be running.
-
-Example:
-{"success": true, "output": "Linux ct1 6.1.0", "exit_code": 0}"""
 
 # Storage tool descriptions
 GET_STORAGE_DESC = """List storage pools across the cluster with their usage and configuration.
